@@ -27,6 +27,8 @@ var (
 
 	// ErrNotStarted is the error if call Pinger.Ping before start the pinger.
 	ErrNotStarted = errors.New("Pinger is not started yet")
+
+	errInvalidTracker = errors.New("Invalid Tracker")
 )
 
 func init() {
@@ -46,9 +48,13 @@ func newTracker(probeID uint32) tracker {
 	}
 }
 
-func (t *tracker) Unmarshal(raw []byte) {
+func (t *tracker) Unmarshal(raw []byte) error {
+	if len(raw) != 8 {
+		return errInvalidTracker
+	}
 	t.ProbeID = binary.BigEndian.Uint32(raw[:4])
 	t.MessageID = binary.BigEndian.Uint32(raw[4:])
+	return nil
 }
 
 func (t tracker) Marshal() []byte {
@@ -243,9 +249,7 @@ func (p *Pinger) onReceiveMessage(raw []byte) {
 
 	if body, ok := msg.Body.(*icmp.Echo); !ok {
 		return
-	} else {
-		reply.Tracker.Unmarshal(body.Data)
-
+	} else if err = reply.Tracker.Unmarshal(body.Data); err == nil {
 		p.handler.Handle(reply)
 	}
 }
