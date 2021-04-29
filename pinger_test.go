@@ -3,7 +3,6 @@ package pinger_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"testing"
@@ -12,66 +11,15 @@ import (
 	"github.com/macrat/go-parallel-pinger"
 )
 
-func Example_single() {
-	p := pinger.NewIPv4()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	if err := p.Start(ctx); err != nil {
-		log.Fatalf("failed to start pinger: %s", err)
-	}
-
-	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
-	result, err := p.Ping(ctx, target, 4, 100*time.Millisecond)
-	if err != nil {
-		log.Fatalf("failed to send ping: %s", err)
-	}
-
-	log.Printf("sent %d packets and received %d packets", result.Sent, result.Recv)
-	log.Printf("RTT: min=%s / avg=%s / max=%s", result.MinRTT, result.AvgRTT, result.MaxRTT)
-}
-
-func Example_parallel() {
-	p := pinger.NewIPv4()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	if err := p.Start(ctx); err != nil {
-		log.Fatalf("failed to start pinger: %s", err)
-	}
-
-	wg := &sync.WaitGroup{}
-
-	for _, target := range []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"} {
-		wg.Add(1)
-
-		go func(target string) {
-			t, _ := net.ResolveIPAddr("ip", target)
-			result, err := p.Ping(ctx, t, 4, 100*time.Millisecond)
-
-			if err != nil {
-				log.Printf("%s: failed to send ping: %s", target, err)
-			} else {
-				log.Printf("%s: min=%s / avg=%s / max=%s", target, result.MinRTT, result.AvgRTT, result.MaxRTT)
-			}
-
-			wg.Done()
-		}(target)
-	}
-
-	wg.Wait()
-}
-
-func TestPinger(t *testing.T) {
+func TestPinger_Ping(t *testing.T) {
 	tests := []struct {
 		Name   string
 		Pinger *pinger.Pinger
 		Target string
 	}{
-		{"IPv4", pinger.NewIPv4(), "127.0.0.1"},
-		{"IPv6", pinger.NewIPv6(), "::1"},
+		{"IPv4/127.0.0.1", pinger.NewIPv4(), "127.0.0.1"},
+		{"IPv4/8.8.8.8", pinger.NewIPv4(), "8.8.8.8"},
+		{"IPv6/::1", pinger.NewIPv6(), "::1"},
 	}
 
 	for _, tt := range tests {
@@ -98,6 +46,9 @@ func TestPinger(t *testing.T) {
 			if result.Recv != 4 {
 				t.Errorf("expected receive 4 packets but received only %d packets", result.Recv)
 			}
+			if result.Loss != 0 {
+				t.Errorf("expected loss 0 packet but loss %d packets", result.Loss)
+			}
 			if len(result.RTTs) != 4 {
 				t.Errorf("expected 4 RTT records but %d RTT records found: %v", len(result.RTTs), result.RTTs)
 			}
@@ -112,7 +63,7 @@ func TestPinger_flooding(t *testing.T) {
 	defer cancel()
 
 	if err := p.Start(ctx); err != nil {
-		log.Fatalf("failed to start pinger: %s", err)
+		t.Fatalf("failed to start pinger: %s", err)
 	}
 
 	wg := &sync.WaitGroup{}
@@ -141,6 +92,8 @@ func TestPinger_flooding(t *testing.T) {
 }
 
 func TestPinger_timeout(t *testing.T) {
+	t.Parallel()
+
 	p := pinger.NewIPv4()
 
 	ctxLong, cancelLong := context.WithTimeout(context.Background(), 1*time.Second)
