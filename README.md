@@ -1,10 +1,10 @@
-go-parallel-ping
-================
+go-parallel-pinger
+==================
 
-[![Documents](https://pkg.go.dev/badge/github.com/macrat/go-parallel-ping)](https://pkg.go.dev/github.com/macrat/go-parallel-ping)
+[![Documents](https://pkg.go.dev/badge/github.com/macrat/go-parallel-pinger)](https://pkg.go.dev/github.com/macrat/go-parallel-pinger)
 ![Supports Linux, Darwin, and Windows](https://img.shields.io/badge/platform-Linux%20%7C%20Darwin%20%7C%20Windows-lightgrey)
-[![GitHub Actions CI Status](https://github.com/macrat/go-parallel-ping/actions/workflows/test.yml/badge.svg)](https://github.com/macrat/go-parallel-ping/actions/workflows/test.yml)
-[![Codecov Test Coverage](https://img.shields.io/codecov/c/gh/macrat/go-parallel-ping)](https://app.codecov.io/gh/macrat/go-parallel-ping/)
+[![GitHub Actions CI Status](https://github.com/macrat/go-parallel-pinger/actions/workflows/test.yml/badge.svg)](https://github.com/macrat/go-parallel-pinger/actions/workflows/test.yml)
+[![Codecov Test Coverage](https://img.shields.io/codecov/c/gh/macrat/go-parallel-pinger)](https://app.codecov.io/gh/macrat/go-parallel-pinger/)
 
 A easy and thread-safe way to send ping in Go.
 
