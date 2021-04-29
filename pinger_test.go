@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -174,19 +173,19 @@ func TestPinger_timeout(t *testing.T) {
 func TestPinger_changePrevileged(t *testing.T) {
 	p := pinger.NewIPv4()
 
-	if p.Privileged() != (runtime.GOOS == "windows") {
-		t.Errorf("unexpected default privileged: %t != %t", p.Privileged(), (runtime.GOOS == "windows"))
+	if p.Privileged() != pinger.DEFAULT_PRIVILEGED {
+		t.Errorf("unexpected default privileged: %t != %t", p.Privileged(), pinger.DEFAULT_PRIVILEGED)
 	}
 
-	if err := p.SetPrivileged(true); err != nil {
+	if err := p.SetPrivileged(!pinger.DEFAULT_PRIVILEGED); err != nil {
 		t.Errorf("failed to set privileged mode: %s", err)
 	}
 	if p.Privileged() != true {
 		t.Errorf("set privileged but got unprivileged")
 	}
 
-	if err := p.SetPrivileged(false); err != nil {
-		t.Errorf("failed to set unprivileged mode: %s", err)
+	if err := p.SetPrivileged(pinger.DEFAULT_PRIVILEGED); err != nil {
+		t.Errorf("failed to set privileged mode: %s", err)
 	}
 	if p.Privileged() != false {
 		t.Errorf("set unprivileged but got privileged")
@@ -198,7 +197,7 @@ func TestPinger_changePrevileged(t *testing.T) {
 	if err := p.Start(ctx); err != nil {
 		t.Fatalf("failed to start pinger: %s", err)
 	}
-	if err := p.SetPrivileged(true); err == nil {
+	if err := p.SetPrivileged(!pinger.DEFAULT_PRIVILEGED); err == nil {
 		t.Errorf("expected failure to set privileged because pinger is started, but succeed")
 	} else if err != pinger.ErrAlreadyStarted {
 		t.Errorf("expected failure to set privileged because pinger is started, but got unexpected another error: %s", err)
