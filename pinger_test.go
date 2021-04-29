@@ -180,15 +180,15 @@ func TestPinger_changePrevileged(t *testing.T) {
 	if err := p.SetPrivileged(!pinger.DEFAULT_PRIVILEGED); err != nil {
 		t.Errorf("failed to set privileged mode: %s", err)
 	}
-	if p.Privileged() != true {
-		t.Errorf("set privileged but got unprivileged")
+	if p.Privileged() != !pinger.DEFAULT_PRIVILEGED {
+		t.Errorf("unexpected privileged mode: %t != %t", p.Privileged(), !pinger.DEFAULT_PRIVILEGED)
 	}
 
 	if err := p.SetPrivileged(pinger.DEFAULT_PRIVILEGED); err != nil {
 		t.Errorf("failed to set privileged mode: %s", err)
 	}
-	if p.Privileged() != false {
-		t.Errorf("set unprivileged but got privileged")
+	if p.Privileged() != pinger.DEFAULT_PRIVILEGED {
+		t.Errorf("unexpected privileged mode: %t != %t", p.Privileged(), pinger.DEFAULT_PRIVILEGED)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
