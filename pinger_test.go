@@ -151,7 +151,7 @@ func TestPinger_timeout(t *testing.T) {
 		t.Fatalf("failed to start pinger: %s", err)
 	}
 
-	ctxShort, cancelShort := context.WithTimeout(ctxLong, 200*time.Millisecond)
+	ctxShort, cancelShort := context.WithTimeout(ctxLong, 250*time.Millisecond)
 	defer cancelShort()
 
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")

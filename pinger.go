@@ -345,13 +345,16 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 
 	sent := make(map[uint32]time.Time)
 	recv := make(chan reply, count+1)
-	defer close(recv)
 
 	p.handler.Register(probeID, recv)
-	defer p.handler.Unregister(probeID)
 
 	tick := time.NewTicker(interval)
-	defer tick.Stop()
+
+	defer func() {
+		p.handler.Unregister(probeID)
+		close(recv)
+		tick.Stop()
+	}()
 
 	for {
 		select {
