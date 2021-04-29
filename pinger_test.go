@@ -17,9 +17,8 @@ func TestPinger_Ping(t *testing.T) {
 		Pinger *pinger.Pinger
 		Target string
 	}{
-		{"IPv4/127.0.0.1", pinger.NewIPv4(), "127.0.0.1"},
-		{"IPv4/8.8.8.8", pinger.NewIPv4(), "8.8.8.8"},
-		{"IPv6/::1", pinger.NewIPv6(), "::1"},
+		{"IPv4", pinger.NewIPv4(), "127.0.0.1"},
+		{"IPv6", pinger.NewIPv6(), "::1"},
 	}
 
 	for _, tt := range tests {
