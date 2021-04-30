@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
-	"runtime"
 
 	"github.com/macrat/go-parallel-pinger"
 )
@@ -57,17 +57,14 @@ func TestPinger_Ping(t *testing.T) {
 }
 
 func TestPinger_flooding(t *testing.T) {
-	tests := []struct{
-		Name string
+	tests := []struct {
+		Name   string
 		Target func(*testing.T, int) string
 	}{
 		{"same_host", func(t *testing.T, i int) string {
 			return "127.0.0.1"
 		}},
 		{"many_hosts", func(t *testing.T, i int) string {
-			if runtime.GOOS == "darwin" {
-				t.Skip("darwin is only supported ping to 127.0.0.1")
-			}
 			return fmt.Sprintf("127.0.0.%d", i)
 		}},
 	}
@@ -77,6 +74,10 @@ func TestPinger_flooding(t *testing.T) {
 
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
+
+			if runtime.GOOS == "darwin" {
+				t.Skip("darwin is only supported ping to 127.0.0.1")
+			}
 
 			p := pinger.NewIPv4()
 
