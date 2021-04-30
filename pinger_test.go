@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"runtime"
 
 	"github.com/macrat/go-parallel-pinger"
 )
@@ -56,38 +57,61 @@ func TestPinger_Ping(t *testing.T) {
 }
 
 func TestPinger_flooding(t *testing.T) {
-	p := pinger.NewIPv4()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	if err := p.Start(ctx); err != nil {
-		t.Fatalf("failed to start pinger: %s", err)
+	tests := []struct{
+		Name string
+		Target func(*testing.T, int) string
+	}{
+		{"same_host", func(t *testing.T, i int) string {
+			return "127.0.0.1"
+		}},
+		{"many_hosts", func(t *testing.T, i int) string {
+			if runtime.GOOS == "darwin" {
+				t.Skip("darwin is only supported ping to 127.0.0.1")
+			}
+			return fmt.Sprintf("127.0.0.%d", i)
+		}},
 	}
 
-	wg := &sync.WaitGroup{}
+	for _, tt := range tests {
+		tt := tt
 
-	for i := 1; i <= 254; i++ {
-		wg.Add(1)
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
 
-		go func(i int) {
-			target := fmt.Sprintf("127.0.0.%d", i)
-			addr, _ := net.ResolveIPAddr("ip", target)
-			result, err := p.Ping(ctx, addr, 8, 100*time.Millisecond)
+			p := pinger.NewIPv4()
 
-			if err != nil {
-				t.Errorf("%s: failed to send ping: %s", target, err)
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+
+			if err := p.Start(ctx); err != nil {
+				t.Fatalf("failed to start pinger: %s", err)
 			}
 
-			if result.Loss != 0 {
-				t.Errorf("%s: lose %d packets", target, result.Loss)
+			wg := &sync.WaitGroup{}
+
+			for i := 1; i <= 254; i++ {
+				wg.Add(1)
+
+				go func(i int) {
+					target := tt.Target(t, i)
+					addr, _ := net.ResolveIPAddr("ip", target)
+					result, err := p.Ping(ctx, addr, 8, 100*time.Millisecond)
+
+					if err != nil {
+						t.Errorf("%s: failed to send ping: %s", target, err)
+					}
+
+					if result.Loss != 0 {
+						t.Errorf("%s: lose %d packets", target, result.Loss)
+					}
+
+					wg.Done()
+				}(i)
 			}
 
-			wg.Done()
-		}(i)
+			wg.Wait()
+		})
 	}
-
-	wg.Wait()
 }
 
 func TestPinger_timeout(t *testing.T) {
