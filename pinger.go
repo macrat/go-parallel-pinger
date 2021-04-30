@@ -97,16 +97,11 @@ func (h *handlerRegistry) Unregister(probeID uint32) {
 	delete(h.handlers, probeID)
 }
 
-func (h *handlerRegistry) Get(probeID uint32) (handler chan reply, ok bool) {
+func (h *handlerRegistry) Handle(r reply) {
 	h.RLock()
 	defer h.RUnlock()
 
-	handler, ok = h.handlers[probeID]
-	return
-}
-
-func (h *handlerRegistry) Handle(r reply) {
-	if handler, ok := h.Get(r.Tracker.ProbeID); ok {
+	if handler, ok := h.handlers[r.Tracker.ProbeID]; ok {
 		handler <- r
 	}
 }
