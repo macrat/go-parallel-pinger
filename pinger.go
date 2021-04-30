@@ -342,7 +342,6 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 
 	probeID := rand.Uint32()
 
-	sent := make(map[uint32]time.Time)
 	recv := make(chan reply, count+1)
 
 	p.handler.Register(probeID, recv)
@@ -355,6 +354,15 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 		tick.Stop()
 	}()
 
+	result.Sent++
+	t := newTracker(probeID)
+	sent := map[uint32]time.Time{
+		t.MessageID: time.Now(),
+	}
+	if err := p.send(targetAddr, result.Sent, t); err != nil {
+		return result, err
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -362,7 +370,7 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 		case <-tick.C:
 			if result.Sent < count {
 				result.Sent++
-				t := newTracker(probeID)
+				t = newTracker(probeID)
 				sent[t.MessageID] = time.Now()
 				if err := p.send(targetAddr, result.Sent, t); err != nil {
 					return result, err

@@ -127,7 +127,7 @@ func TestPinger_timeout(t *testing.T) {
 		t.Fatalf("failed to start pinger: %s", err)
 	}
 
-	ctxShort, cancelShort := context.WithTimeout(ctxLong, 250*time.Millisecond)
+	ctxShort, cancelShort := context.WithTimeout(ctxLong, 150*time.Millisecond)
 	defer cancelShort()
 
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
@@ -137,7 +137,7 @@ func TestPinger_timeout(t *testing.T) {
 	}
 
 	if result.Sent != 2 {
-		t.Errorf("expected send 2 packets but sent only %d packets", result.Sent)
+		t.Errorf("expected send 2 packets but sent %d packets", result.Sent)
 	}
 	if result.Recv > 2 {
 		t.Errorf("expected receive maximum 2 packets but received %d packets", result.Recv)
