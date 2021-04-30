@@ -80,7 +80,7 @@ func TestPinger_flooding(t *testing.T) {
 
 			p := pinger.NewIPv4()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
 			if err := p.Start(ctx); err != nil {
