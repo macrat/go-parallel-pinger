@@ -126,7 +126,6 @@ func newPinger(protocol byte) *Pinger {
 		id:         rand.Intn(0xffff + 1),
 		protocol:   protocol,
 		privileged: DEFAULT_PRIVILEGED,
-		handler:    newHandlerRegistry(),
 	}
 }
 
@@ -182,6 +181,18 @@ func (p *Pinger) Started() bool {
 	return p.started
 }
 
+func (p *Pinger) close() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.conn.Close()
+	p.conn = nil
+
+	p.handler = nil
+
+	p.started = false
+}
+
 func (p *Pinger) listen() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -198,6 +209,7 @@ func (p *Pinger) listen() error {
 	}
 
 	p.started = true
+	p.handler = newHandlerRegistry()
 
 	return nil
 }
@@ -218,6 +230,8 @@ func (p *Pinger) runHandler(ctx context.Context) {
 			p.onReceiveMessage(buf[:n])
 		}
 	}
+
+	p.close()
 }
 
 // Start is starts this Pinger for send and receive ping in new goroutine.
