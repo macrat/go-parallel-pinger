@@ -211,3 +211,39 @@ func TestPinger_notStarted(t *testing.T) {
 		t.Errorf("expected failure to start pinger because pinger is already started, but got unexpected another error: %s", err)
 	}
 }
+
+func BenchmarkPinger_Ping_v4(b *testing.B) {
+	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
+
+	p := pinger.NewIPv4()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	if err := p.Start(ctx); err != nil {
+		b.Fatalf("failed to start pinger: %s", err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.Ping(ctx, target, 10, 1*time.Nanosecond)
+	}
+}
+
+func BenchmarkPinger_Ping_v6(b *testing.B) {
+	target, _ := net.ResolveIPAddr("ip", "::1")
+
+	p := pinger.NewIPv6()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	if err := p.Start(ctx); err != nil {
+		b.Fatalf("failed to start pinger: %s", err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.Ping(ctx, target, 10, 1*time.Nanosecond)
+	}
+}
