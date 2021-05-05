@@ -66,7 +66,7 @@ func (t tracker) Marshal() []byte {
 
 // reply is a echo reply event from target hos.
 type reply struct {
-	ReceivedAt time.Time
+	ReceivedAt int64
 	Tracker    tracker
 }
 
@@ -112,7 +112,7 @@ type Pinger struct {
 
 	id int
 
-	protocol   string
+	protocol   byte
 	privileged bool
 
 	started bool
@@ -121,7 +121,7 @@ type Pinger struct {
 	handler *handlerRegistry
 }
 
-func newPinger(protocol string) *Pinger {
+func newPinger(protocol byte) *Pinger {
 	return &Pinger{
 		id:         rand.Intn(0xffff + 1),
 		protocol:   protocol,
@@ -132,17 +132,20 @@ func newPinger(protocol string) *Pinger {
 
 // NewIPv4 makes new Pinger for IPv4 protocol.
 func NewIPv4() *Pinger {
-	return newPinger("v4")
+	return newPinger('4')
 }
 
 // NewIPv6 makes new Pinger for IPv6 protocol.
 func NewIPv6() *Pinger {
-	return newPinger("v6")
+	return newPinger('6')
 }
 
 // Protocol returns "v4" if it's a Pinger for IPv4, otherwise returns "v6".
 func (p *Pinger) Protocol() string {
-	return p.protocol
+	if p.protocol == '4' {
+		return "v4"
+	}
+	return "v6"
 }
 
 // SetPrivileged sets privileged mode.
@@ -200,7 +203,7 @@ func (p *Pinger) listen() error {
 }
 
 func (p *Pinger) runHandler(ctx context.Context) {
-	buf := make([]byte, 1500)
+	var buf [1500]byte
 
 	for {
 		select {
@@ -211,7 +214,7 @@ func (p *Pinger) runHandler(ctx context.Context) {
 
 		p.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 
-		if n, _, err := p.conn.ReadFrom(buf); err == nil {
+		if n, _, err := p.conn.ReadFrom(buf[:]); err == nil {
 			p.onReceiveMessage(buf[:n])
 		}
 	}
@@ -231,7 +234,7 @@ func (p *Pinger) Start(ctx context.Context) error {
 }
 
 func (p *Pinger) onReceiveMessage(raw []byte) {
-	reply := reply{ReceivedAt: time.Now()}
+	reply := reply{ReceivedAt: time.Now().UnixNano()}
 
 	msg, err := icmp.ParseMessage(p.protoNum(), raw)
 	if err != nil {
@@ -250,7 +253,7 @@ func (p *Pinger) onReceiveMessage(raw []byte) {
 }
 
 func (p *Pinger) listenAddr() string {
-	if p.protocol == "v4" {
+	if p.protocol == '4' {
 		return "0.0.0.0"
 	} else {
 		return "::"
@@ -259,13 +262,13 @@ func (p *Pinger) listenAddr() string {
 
 func (p *Pinger) protoName() string {
 	if p.privileged {
-		if p.protocol == "v4" {
+		if p.protocol == '4' {
 			return "ip4:icmp"
 		} else {
 			return "ip6:ipv6-icmp"
 		}
 	} else {
-		if p.protocol == "v4" {
+		if p.protocol == '4' {
 			return "udp4"
 		} else {
 			return "udp6"
@@ -274,7 +277,7 @@ func (p *Pinger) protoName() string {
 }
 
 func (p *Pinger) protoNum() int {
-	if p.protocol == "v4" {
+	if p.protocol == '4' {
 		return 1
 	} else {
 		return 58
@@ -282,7 +285,7 @@ func (p *Pinger) protoNum() int {
 }
 
 func (p *Pinger) requestType() icmp.Type {
-	if p.protocol == "v4" {
+	if p.protocol == '4' {
 		return ipv4.ICMPTypeEcho
 	} else {
 		return ipv6.ICMPTypeEchoRequest
@@ -290,7 +293,7 @@ func (p *Pinger) requestType() icmp.Type {
 }
 
 func (p *Pinger) replyType() icmp.Type {
-	if p.protocol == "v4" {
+	if p.protocol == '4' {
 		return ipv4.ICMPTypeEchoReply
 	} else {
 		return ipv6.ICMPTypeEchoReply
@@ -343,21 +346,18 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 	probeID := rand.Uint32()
 
 	recv := make(chan reply, count+1)
+	defer close(recv)
 
 	p.handler.Register(probeID, recv)
+	defer p.handler.Unregister(probeID)
 
 	tick := time.NewTicker(interval)
-
-	defer func() {
-		p.handler.Unregister(probeID)
-		close(recv)
-		tick.Stop()
-	}()
+	defer tick.Stop()
 
 	result.Sent++
 	t := newTracker(probeID)
-	sent := map[uint32]time.Time{
-		t.MessageID: time.Now(),
+	sent := map[uint32]int64{
+		t.MessageID: time.Now().UnixNano(),
 	}
 	if err := p.send(targetAddr, result.Sent, t); err != nil {
 		return result, err
@@ -371,7 +371,7 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 			if result.Sent < count {
 				result.Sent++
 				t = newTracker(probeID)
-				sent[t.MessageID] = time.Now()
+				sent[t.MessageID] = time.Now().UnixNano()
 				if err := p.send(targetAddr, result.Sent, t); err != nil {
 					return result, err
 				}
@@ -380,7 +380,7 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 			if sentAt, ok := sent[r.Tracker.MessageID]; ok {
 				delete(sent, r.Tracker.MessageID)
 
-				(&result).onRecv(r.ReceivedAt.Sub(sentAt))
+				(&result).onRecv(time.Duration(r.ReceivedAt-sentAt) * time.Nanosecond)
 
 				if result.Recv >= count {
 					return result, nil
