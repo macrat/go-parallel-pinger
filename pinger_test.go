@@ -206,9 +206,9 @@ func TestPinger_notStarted(t *testing.T) {
 
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 	if _, err := p.Ping(ctx, target, 4, 100*time.Millisecond); err == nil {
-		t.Errorf("expected failure to start pinger because pinger is already started, but succeed")
+		t.Errorf("expected failure to start pinger because pinger is not yet started, but succeed")
 	} else if err != pinger.ErrNotStarted {
-		t.Errorf("expected failure to start pinger because pinger is already started, but got unexpected another error: %s", err)
+		t.Errorf("expected failure to start pinger because pinger is not yet started, but got unexpected another error: %s", err)
 	}
 }
 
