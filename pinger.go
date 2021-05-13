@@ -345,7 +345,6 @@ func (p *Pinger) convertTarget(target *net.IPAddr) net.Addr {
 // It returns ErrNotStarted if call this before call Start.
 func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interval time.Duration) (Result, error) {
 	result := newResult(target, count)
-	defer (&result).calculate()
 
 	if !p.Started() {
 		return result, ErrNotStarted
@@ -380,14 +379,14 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 	for {
 		select {
 		case <-ctx.Done():
-			return result, nil
+			return result.calculate(), nil
 		case <-tick.C:
 			if result.Sent < count {
 				result.Sent++
 				t = newTracker(probeID)
 				sent[t.MessageID] = time.Now().UnixNano()
 				if err := p.send(targetAddr, result.Sent, t); err != nil {
-					return result, err
+					return result.calculate(), err
 				}
 			}
 		case r := <-recv:
@@ -397,7 +396,7 @@ func (p *Pinger) Ping(ctx context.Context, target *net.IPAddr, count int, interv
 				(&result).onRecv(time.Duration(r.ReceivedAt-sentAt) * time.Nanosecond)
 
 				if result.Recv >= count {
-					return result, nil
+					return result.calculate(), nil
 				}
 			}
 		}
@@ -431,9 +430,9 @@ func (r *Result) onRecv(rtt time.Duration) {
 	r.RTTs = append(r.RTTs, rtt)
 }
 
-func (r *Result) calculate() {
+func (r Result) calculate() Result {
 	if len(r.RTTs) == 0 {
-		return
+		return r
 	}
 
 	r.MinRTT = r.RTTs[0]
@@ -451,4 +450,6 @@ func (r *Result) calculate() {
 	}
 
 	r.AvgRTT /= time.Duration(len(r.RTTs))
+
+	return r
 }

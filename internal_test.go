@@ -62,7 +62,7 @@ func TestResult(t *testing.T) {
 	r.onRecv(2 * time.Second)
 	r.onRecv(6 * time.Second)
 
-	r.calculate()
+	r = r.calculate()
 
 	if r.Sent != 0 {
 		t.Errorf("unexpected sent packets: %d", r.Sent)
