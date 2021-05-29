@@ -215,12 +215,14 @@ func (p *Pinger) listen() error {
 }
 
 func (p *Pinger) runHandler(ctx context.Context) {
+	defer p.close()
+
 	var buf [1500]byte
 
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return
 		default:
 		}
 
@@ -230,8 +232,6 @@ func (p *Pinger) runHandler(ctx context.Context) {
 			p.onReceiveMessage(buf[:n])
 		}
 	}
-
-	p.close()
 }
 
 // Start is starts this Pinger for send and receive ping in new goroutine.
