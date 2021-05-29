@@ -232,6 +232,34 @@ func TestPinger_cancelContext(t *testing.T) {
 	}
 }
 
+func TestPinger_Stop(t *testing.T) {
+	p := pinger.NewIPv4()
+
+	before := runtime.NumGoroutine()
+
+	for i := 0; i < 1000; i++ {
+		p.Start(context.Background())
+		if err := p.Stop(); err != nil {
+			t.Fatalf("failed to stop Pinger: %s", err)
+		}
+	}
+
+	after := runtime.NumGoroutine()
+
+	if before < after {
+		t.Errorf("goroutines should not increase but increased: %d -> %d", before, after)
+	}
+}
+
+func TestPinger_Stop_notStarted(t *testing.T) {
+	p := pinger.NewIPv4()
+
+	err := p.Stop()
+	if err != pinger.ErrNotStarted {
+		t.Errorf("expected ErrNotStarted but got %s", err)
+	}
+}
+
 func BenchmarkPinger_Ping_v4(b *testing.B) {
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 
