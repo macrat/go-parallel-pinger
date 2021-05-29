@@ -116,8 +116,8 @@ type Pinger struct {
 	privileged bool
 
 	started bool
+	stop    chan struct{}
 	stopped chan struct{}
-	cancel  func()
 	conn    *icmp.PacketConn
 
 	handler *handlerRegistry
@@ -187,14 +187,11 @@ func (p *Pinger) Started() bool {
 //
 // It returns ErrNotStarted if call this before call Start.
 func (p *Pinger) Stop() error {
-	p.lock.Lock()
-	if p.cancel == nil {
-		p.lock.Unlock()
+	if !p.Started() {
 		return ErrNotStarted
 	}
-	p.cancel()
-	p.lock.Unlock()
 
+	p.stop <- struct{}{}
 	<-p.stopped
 
 	return nil
@@ -210,7 +207,7 @@ func (p *Pinger) close() {
 	p.handler = nil
 
 	p.started = false
-	p.cancel()
+	close(p.stop)
 	close(p.stopped)
 }
 
@@ -244,6 +241,8 @@ func (p *Pinger) runHandler(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-p.stop:
+			return
 		default:
 		}
 
@@ -263,11 +262,10 @@ func (p *Pinger) Start(ctx context.Context) error {
 		return err
 	}
 
+	p.stop = make(chan struct{})
 	p.stopped = make(chan struct{})
 
-	c, cancel := context.WithCancel(ctx)
-	p.cancel = cancel
-	go p.runHandler(c)
+	go p.runHandler(ctx)
 
 	return nil
 }

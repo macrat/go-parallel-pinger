@@ -295,3 +295,16 @@ func BenchmarkPinger_Ping_v6(b *testing.B) {
 		p.Ping(ctx, target, 10, 1*time.Nanosecond)
 	}
 }
+
+func BenchmarkPinger_startStop(b *testing.B) {
+	p := pinger.NewIPv4()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.Start(ctx)
+		p.Stop()
+	}
+}
