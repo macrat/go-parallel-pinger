@@ -227,8 +227,8 @@ func TestPinger_cancelContext(t *testing.T) {
 
 	after := runtime.NumGoroutine()
 
-	if before < after {
-		t.Errorf("goroutines should not increase but increased: %d -> %d", before, after)
+	if before+5 < after {
+		t.Errorf("goroutines is too increased: %d -> %d", before, after)
 	}
 }
 
@@ -246,8 +246,8 @@ func TestPinger_Stop(t *testing.T) {
 
 	after := runtime.NumGoroutine()
 
-	if before < after {
-		t.Errorf("goroutines should not increase but increased: %d -> %d", before, after)
+	if before+5 < after {
+		t.Errorf("goroutines is too increased: %d -> %d", before, after)
 	}
 }
 
