@@ -260,6 +260,62 @@ func TestPinger_Stop_notStarted(t *testing.T) {
 	}
 }
 
+func TestPinger_memoryLeak(t *testing.T) {
+	tests := []struct {
+		Name string
+		F    func()
+	}{
+		{"cancelContext", func() {
+			p := pinger.NewIPv4()
+
+			for i := 0; i < 100000; i++ {
+				ctx, cancel := context.WithCancel(context.Background())
+				p.Start(ctx)
+				cancel()
+			}
+		}},
+		{"Stop", func() {
+			p := pinger.NewIPv4()
+
+			for i := 0; i < 10000; i++ {
+				p.Start(context.Background())
+				p.Stop()
+			}
+		}},
+		{"Ping", func() {
+			target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
+
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer cancel()
+
+			p := pinger.NewIPv4()
+			p.Start(ctx)
+
+			for i := 0; i < 10000; i++ {
+				p.Ping(ctx, target, 1, 1*time.Nanosecond)
+			}
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			var before, after runtime.MemStats
+
+			runtime.GC()
+			runtime.ReadMemStats(&before)
+
+			tt.F()
+
+			runtime.GC()
+			runtime.ReadMemStats(&after)
+
+			if before.Alloc*5/4 <= after.Alloc {
+				t.Errorf("use too lot of memory: before=%dKB -> after=%dKB", before.Alloc/1024, after.Alloc/1024)
+			}
+		})
+	}
+}
+
 func BenchmarkPinger_Ping_v4(b *testing.B) {
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 
