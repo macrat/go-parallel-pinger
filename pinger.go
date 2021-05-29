@@ -210,6 +210,7 @@ func (p *Pinger) close() {
 	p.handler = nil
 
 	p.started = false
+	p.cancel()
 	close(p.stopped)
 }
 
