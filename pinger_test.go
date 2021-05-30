@@ -121,8 +121,6 @@ func TestPinger_flooding(t *testing.T) {
 }
 
 func TestPinger_timeout(t *testing.T) {
-	t.Parallel()
-
 	p := pinger.NewIPv4()
 
 	ctxLong, cancelLong := context.WithTimeout(context.Background(), 1*time.Second)
@@ -347,8 +345,6 @@ func TestPinger_memoryLeak(t *testing.T) {
 }
 
 func TestPinger_raceCondition(t *testing.T) {
-	t.Parallel()
-
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 
 	p := pinger.NewIPv4()
