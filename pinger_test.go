@@ -18,14 +18,18 @@ func TestPinger_Ping(t *testing.T) {
 		Pinger *pinger.Pinger
 		Target string
 	}{
-		{"IPv4", pinger.NewIPv4(), "127.0.0.1"},
-		{"IPv6", pinger.NewIPv6(), "::1"},
+		{"v4", pinger.NewIPv4(), "127.0.0.1"},
+		{"v6", pinger.NewIPv6(), "::1"},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
+
+			if tt.Pinger.Protocol() != tt.Name {
+				t.Fatalf("unexpected protocol name: %s", tt.Pinger.Protocol())
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
