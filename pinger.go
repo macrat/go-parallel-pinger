@@ -106,6 +106,13 @@ func (h *handlerRegistry) Handle(r reply) {
 	}
 }
 
+func (h *handlerRegistry) Clear() {
+	h.Lock()
+	defer h.Unlock()
+
+	h.handlers = make(map[uint32]chan reply)
+}
+
 // Pinger is the ping sender and receiver.
 type Pinger struct {
 	lock sync.Mutex
@@ -116,7 +123,7 @@ type Pinger struct {
 	privileged bool
 
 	started bool
-	stop    chan struct{}
+	stop    func()
 	stopped chan struct{}
 	conn    *icmp.PacketConn
 
@@ -128,6 +135,7 @@ func newPinger(protocol byte) *Pinger {
 		id:         rand.Intn(0xffff + 1),
 		protocol:   protocol,
 		privileged: DEFAULT_PRIVILEGED,
+		handler:    newHandlerRegistry(),
 	}
 }
 
@@ -187,11 +195,14 @@ func (p *Pinger) Started() bool {
 //
 // It returns ErrNotStarted if call this before call Start.
 func (p *Pinger) Stop() error {
-	if !p.Started() {
+	p.lock.Lock()
+	if !p.started {
+		p.lock.Unlock()
 		return ErrNotStarted
 	}
+	p.stop()
+	p.lock.Unlock()
 
-	p.stop <- struct{}{}
 	<-p.stopped
 
 	return nil
@@ -202,12 +213,11 @@ func (p *Pinger) close() {
 	defer p.lock.Unlock()
 
 	p.conn.Close()
-	p.conn = nil
 
-	p.handler = nil
+	p.handler.Clear()
 
 	p.started = false
-	close(p.stop)
+	p.stop()
 	close(p.stopped)
 }
 
@@ -227,7 +237,6 @@ func (p *Pinger) listen() error {
 	}
 
 	p.started = true
-	p.handler = newHandlerRegistry()
 
 	return nil
 }
@@ -240,8 +249,6 @@ func (p *Pinger) runHandler(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
-		case <-p.stop:
 			return
 		default:
 		}
@@ -262,7 +269,7 @@ func (p *Pinger) Start(ctx context.Context) error {
 		return err
 	}
 
-	p.stop = make(chan struct{})
+	ctx, p.stop = context.WithCancel(ctx)
 	p.stopped = make(chan struct{})
 
 	go p.runHandler(ctx)
@@ -338,6 +345,10 @@ func (p *Pinger) replyType() icmp.Type {
 }
 
 func (p *Pinger) send(dst net.Addr, seq int, t tracker) error {
+	p.lock.Lock()
+	conn := p.conn
+	p.lock.Unlock()
+
 	msg := icmp.Message{
 		Type: p.requestType(),
 		Body: &icmp.Echo{
@@ -348,7 +359,7 @@ func (p *Pinger) send(dst net.Addr, seq int, t tracker) error {
 	}
 	if b, err := msg.Marshal(nil); err != nil {
 		return err
-	} else if _, err = p.conn.WriteTo(b, dst); err != nil {
+	} else if _, err = conn.WriteTo(b, dst); err != nil {
 		return err
 	}
 

@@ -346,6 +346,40 @@ func TestPinger_memoryLeak(t *testing.T) {
 	}
 }
 
+func TestPinger_raceCondition(t *testing.T) {
+	t.Parallel()
+
+	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
+
+	p := pinger.NewIPv4()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			go p.Ping(ctx, target, 5, 1*time.Millisecond)
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		p.Start(ctx)
+		time.Sleep(50 * time.Millisecond)
+		p.Stop()
+	}
+}
+
 func BenchmarkPinger_Ping_v4(b *testing.B) {
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 
