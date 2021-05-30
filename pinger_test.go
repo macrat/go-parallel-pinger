@@ -345,6 +345,10 @@ func TestPinger_memoryLeak(t *testing.T) {
 }
 
 func TestPinger_raceCondition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows can't start many goroutines")
+	}
+
 	target, _ := net.ResolveIPAddr("ip", "127.0.0.1")
 
 	p := pinger.NewIPv4()
