@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 	"testing"
@@ -213,6 +214,31 @@ func TestPinger_notStarted(t *testing.T) {
 		t.Errorf("expected failure to start pinger because pinger is not yet started, but succeed")
 	} else if err != pinger.ErrNotStarted {
 		t.Errorf("expected failure to start pinger because pinger is not yet started, but got unexpected another error: %s", err)
+	}
+}
+
+func TestPinger_permissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skip because Windows does not cause permission error")
+	}
+	if os.Getuid() == 0 {
+		t.Skip("Skip because run test as root")
+	}
+
+	p := pinger.NewIPv4()
+	p.SetPrivileged(true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	if err := p.Start(ctx); err == nil {
+		t.Errorf("expected error but got nil")
+	} else if err.Error() != "listen ip4:icmp 0.0.0.0: socket: operation not permitted" {
+		t.Errorf("unexpected error: %s", err)
+	}
+
+	if p.Started() {
+		t.Errorf("Pinger should not started but started")
 	}
 }
 
