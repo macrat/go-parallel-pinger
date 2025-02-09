@@ -31,10 +31,6 @@ var (
 	errInvalidTracker = errors.New("Invalid Tracker")
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 // tracker is a value for tracking echo reply.
 type tracker struct {
 	ProbeID   uint32
